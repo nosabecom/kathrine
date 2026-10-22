@@ -1,0 +1,10 @@
+{
+  "name":"@kathrine/mobile","version":"0.1.0","private":true,"main":"index.ts",
+  "scripts":{"start":"expo start --dev-client","check":"tsc --noEmit","export:web":"expo export --platform web"},
+  "dependencies":{
+    "@expo/vector-icons":"^15.0.2","expo":"~57.0.31","expo-font":"~57.0.4","expo-keep-awake":"~57.0.2","expo-secure-store":"~57.0.4","expo-status-bar":"~57.0.1","expo-video":"~57.0.5",
+    "react":"19.2.3","react-dom":"19.2.3","react-native":"npm:react-native-tvos@0.86.3-0","react-native-paper":"5.15.3","react-native-safe-area-context":"~5.7.0","react-native-web":"~0.21.0"
+  },
+  "devDependencies":{"@react-native-tvos/config-tv":"0.1.7","@types/react":"~19.2.0","expo-build-properties":"~57.0.22","typescript":"~5.9.3"},
+  "expo":{"install":{"exclude":["react-native"]},"autolinking":{"nativeModulesDir":"./modules"}}
+}

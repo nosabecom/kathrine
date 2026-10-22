@@ -1,0 +1,2 @@
+import { MD3DarkTheme } from 'react-native-paper';
+export const theme={...MD3DarkTheme,roundness:4,colors:{...MD3DarkTheme.colors,primary:'#D0BCFF',onPrimary:'#381E72',primaryContainer:'#4F378B',onPrimaryContainer:'#EADDFF',secondary:'#CCC2DC',secondaryContainer:'#4A4458',onSecondaryContainer:'#E8DEF8',tertiary:'#EFB8C8',background:'#141218',surface:'#141218',surfaceVariant:'#49454F',onSurface:'#E6E0E9',onSurfaceVariant:'#CAC4D0',outline:'#938F99',outlineVariant:'#49454F'}};
