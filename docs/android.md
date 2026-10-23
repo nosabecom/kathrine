@@ -1,6 +1,6 @@
 # Expo Android and Android TV
 
-Use pnpm 11.17.0 and Node 22.16+. Install JDK 17 and Android SDK platform 36, build tools, platform tools, and the NDK requested by the generated Gradle build. Set ANDROID_HOME to the SDK root. The Android SDK can be on Godseye; builds do not need a running emulator.
+Use pnpm 11.17.0 and Node 24.22.1+ (24.x). Install JDK 17 and Android SDK platform 36, build tools, platform tools, and the NDK requested by the generated Gradle build. Set ANDROID_HOME to the SDK root. The Android SDK can be on Godseye; builds do not need a running emulator.
 
 Godseye is the Android build/device host. Its current SDK is C:\Users\nomok\AppData\Local\Android\Sdk and Java 21 is installed; ANDROID_HOME, ANDROID_SDK_ROOT, JAVA_HOME, ADB, emulator, and SDK Manager are configured. Run Android commands there via the T3 device host or SSH rather than provisioning another build host. Java 17+ works with the current Gradle wrapper.
 

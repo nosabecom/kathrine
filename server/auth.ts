@@ -49,8 +49,11 @@ export function registerAuth(app: FastifyInstance, db: DB, dataDir: string, secu
   app.addHook('onRequest', async (req, reply) => {
     // Cookie sessions are same-origin only. Native clients authenticate with bearer headers.
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin) {
-      const origin = new URL(req.headers.origin);
-      if (origin.host !== req.headers.host) return reply.code(403).send({ error: 'Cross-origin requests are not allowed.' });
+      let origin: URL;
+      try { origin = new URL(req.headers.origin); }
+      catch { return reply.code(403).send({ error: 'Cross-origin requests are not allowed.' }); }
+      const protocol = secureCookie ? 'https:' : req.protocol + ':';
+      if (origin.host !== req.headers.host || origin.protocol !== protocol) return reply.code(403).send({ error: 'Cross-origin requests are not allowed.' });
     }
   });
   app.get('/api/auth/status', async () => ({ setupRequired: !hasOwner() }));

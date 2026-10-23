@@ -7,7 +7,7 @@ import { MetadataEnricher, type MetadataRecord } from '../server/metadata.js';
 import { localArtwork, plainText } from '../server/localMetadata.js';
 import { ArtworkStore, trustedImageUrl, fileImageType } from '../server/artwork.js';
 import { openDatabase, publicMedia } from '../server/db.js';
-import { Scanner } from '../server/library.js';
+import { Scanner, probe } from '../server/library.js';
 
 const base:MetadataRecord={title:'industry s01e01 dv hdr',sortTitle:'industry s01e01 dv hdr',series:'industry',season:1,episode:1,duration:1800,size:10,bitrate:100,container:'mkv',streams:[]};
 const json=(data:unknown)=>new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
@@ -87,3 +87,20 @@ test('existing files enrich without re-probing or changing media identity and wa
     assert.deepEqual(scanner.status.errors,[]);const row=db.prepare('SELECT * FROM media WHERE id=?').get('stable-id') as any;assert.equal(JSON.parse(row.metadata).metadataVersion,3);assert.equal((db.prepare('SELECT position FROM progress WHERE media_id=?').get('stable-id') as any).position,900);
   }finally{db.close();}
 }));
+
+test('initial metadata probing rejects NFO symlinks outside the library and oversized sidecars',async()=>{
+  const root=await mkdtemp(join(tmpdir(),'kathrine-probe-'));
+  try {
+    const library=join(root,'library');await mkdir(library);
+    const file=join(library,'Example.2024.mkv'),nfo=join(library,'Example.2024.nfo');
+    const fakeProbe=join(root,'ffprobe');
+    await writeFile(fakeProbe,'#!/bin/sh\nprintf \'%s\' \'{"streams":[{"codec_type":"video","codec_name":"h264"}],"format":{}}\'\n',{mode:0o700});
+    const outside=join(root,'private.nfo');await writeFile(outside,'<movie><title>Private outside title</title></movie>');
+    await symlink(outside,nfo);
+    assert.equal((await probe(file,fakeProbe,library)).title,'Example');
+    await rm(nfo);await writeFile(nfo,'<movie><title>Too large</title>'+ ' '.repeat(2*1024*1024) +'</movie>');
+    assert.equal((await probe(file,fakeProbe,library)).title,'Example');
+    await writeFile(nfo,'<movie><title>Allowed title</title></movie>');
+    assert.equal((await probe(file,fakeProbe,library)).title,'Allowed title');
+  } finally { await rm(root,{recursive:true,force:true}); }
+});
