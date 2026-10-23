@@ -7,6 +7,7 @@ import { XMLParser } from 'fast-xml-parser';
 import type { DB, MediaRow } from './db.js';
 import type { Media, MediaStream, ScanStatus } from '../shared/types.js';
 import { MetadataEnricher, type MetadataRecord } from './metadata.js';
+import { checkedPath } from './paths.js';
 export { checkedPath } from './paths.js';
 
 const execute = promisify(execFile);
@@ -15,7 +16,7 @@ const text = (v: unknown) => typeof v === 'string' ? v : typeof v === 'number' ?
 const number = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : 0;
 const xml = new XMLParser({ ignoreAttributes: true, processEntities: false });
 
-export async function probe(file: string, ffprobe: string): Promise<Omit<Media, 'id'|'libraryId'|'addedAt'|'available'|'position'|'completed'|'favorite'>> {
+export async function probe(file: string, ffprobe: string, root = dirname(file)): Promise<Omit<Media, 'id'|'libraryId'|'addedAt'|'available'|'position'|'completed'|'favorite'>> {
   const { stdout } = await execute(ffprobe, ['-v','error','-show_format','-show_streams','-of','json',file], { timeout: 45_000, maxBuffer: 4 * 1024 * 1024 });
   const data = JSON.parse(stdout);
   const streams: MediaStream[] = (data.streams || []).filter((s: any) => ['video','audio','subtitle'].includes(s.codec_type) && !s.disposition?.attached_pic).map((s: any) => {
@@ -35,7 +36,11 @@ export async function probe(file: string, ffprobe: string): Promise<Omit<Media, 
   if (marker > 0) title = title.slice(0,marker).replace(/[ (.-]+$/,'');
   let nfo: any = {};
   for (const candidate of [join(dirname(file), stem+'.nfo'), join(dirname(file),'movie.nfo')]) {
-    try { const parsed = xml.parse(await readFile(candidate,'utf8')); nfo = parsed.movie || parsed.episodedetails || {}; if (nfo.title) break; } catch { /* Sidecar metadata is optional. */ }
+    try {
+      const checked = await checkedPath(candidate, root);
+      if ((await stat(checked)).size > 2 * 1024 * 1024) continue;
+      const parsed = xml.parse(await readFile(checked,'utf8')); nfo = parsed.movie || parsed.episodedetails || {}; if (nfo.title) break;
+    } catch { /* Sidecar metadata is optional and must remain inside the library. */ }
   }
   const duration = number(data.format?.duration) || Math.max(...streams.map(() => 0));
   const size = number(data.format?.size);
@@ -80,7 +85,7 @@ export class Scanner {
             const unchanged=old && old.mtime===info.mtimeMs && old.size===info.size;
             const previous:MetadataRecord|undefined=unchanged?JSON.parse(old.metadata):undefined;
             if(previous?.metadataVersion===3 && (previous.metadataRefreshAfter||0)>Date.now()) { this.db.prepare('UPDATE media SET available=1 WHERE id=?').run(old!.id); continue; }
-            const technical=previous && [2,3].includes(previous.metadataVersion||0)?previous:await probe(file,this.ffprobe);
+            const technical=previous && [2,3].includes(previous.metadataVersion||0)?previous:await probe(file,this.ffprobe,library.path);
             const meta=await this.metadata.enrich(technical,file,library.path,this.onlineMetadata);
             if(this.stopped) return;
             const id = old?.id || createHash('sha256').update(file).digest('hex').slice(0,32);

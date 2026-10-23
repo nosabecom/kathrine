@@ -7,7 +7,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open http://localhost:5173. First run creates .data/bootstrap-code (private); use it on the setup screen to create your owner account. Add your existing movie/show folders in Settings, then scan. FFmpeg and FFprobe must be installed and on PATH. Node 22.16+ and pnpm 11.17.0 are required.
+Open http://localhost:5173. First run creates .data/bootstrap-code (private); use it on the setup screen to create your owner account. Add your existing movie/show folders in Settings, then scan. FFmpeg and FFprobe must be installed and on PATH. Node 24.22.1+ (24.x) and pnpm 11.17.0 are required.
 
 ```sh
 pnpm check
