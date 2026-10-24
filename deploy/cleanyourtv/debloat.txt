@@ -1,0 +1,7 @@
+# Hisense lushan / Android 12: narrow telemetry-only cleanup.
+# Apply using the pinned CleanYourTV tools/disable.ps1, which records prior states.
+# Undo with tools/restore.ps1 using this SAME local list path and its recovery record.
+# Preserve all streaming apps, assistant, casting, updaters, input, remote, network and core services.
+com.vt.tv.evservice             # Hisense automatic content recognition / viewing analytics
+com.google.android.partnersetup # Google partner referral service (RlzPingBroadcastReceiver)
+com.google.android.feedback     # Google feedback / bug-report uploader
