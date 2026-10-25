@@ -47,3 +47,11 @@ React Native Paper uses Material Design 3. TV focus controls use the theme’s p
 Phone fullscreen uses expo-video's fullscreen orientation option to request landscape in its separate fullscreen Activity. Exiting fullscreen returns to the app Activity and its existing rotation policy. It does not change Android's auto-rotate preference or lock the rest of the app. TV retains its normal landscape policy.
 
 Series artwork stays separate from the heading: phones place the title, year and genres below the 16:9 banner; TV places them beside it. Images use contain sizing so neither cropping nor an overlaid text panel hides the artwork. Keep authenticated array image sources when changing these layouts.
+
+## TV viewing controls (0.4.0)
+
+TV playback occupies the full screen and preserves the source aspect ratio. One custom overlay replaces the native video controls, app header, and permanent bottom toolbar. It fades after inactivity while playing and remains visible when paused. Audio/subtitle choices and playback information open focus-contained dialogs; technical stream details are available through Info.
+
+Press a direction or OK to reveal controls. Play/Pause and remote media keys control playback. Focus the timeline with Up from the transport controls; Left/Right preview a seek in ten-second steps, a held direction uses larger steps, and OK applies the selected time. Back cancels a pending seek, then hides the overlay, then returns to the title. Seeking stays within the current stream's available range, including the offset of prepared compatibility streams. Leaving the app pauses TV playback; phone background playback and landscape fullscreen remain available.
+
+Home offers a continue-watching shelf and the actual collection. Search opens on demand. The compact navigation rail leaves room for artwork, and title/series screens place the primary playback action beside the artwork. Returning from an episode retains its season and restores focus to that episode. Original playback remains the default; conversion still requires explicit permission.

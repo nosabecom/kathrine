@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { FlatList, Image, Linking, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { FlatList, Image, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { ActivityIndicator, Card, Chip, Divider, Icon, List, ProgressBar, Searchbar, SegmentedButtons, Text, useTheme } from 'react-native-paper';
 import type { CatalogItem, Media, SeriesSummary } from '../../../shared/types';
 import { request, updateProgress, type Session } from './api';
 import { Action, Empty, FocusCard, isTV } from './components';
-// RN TV 0.86 forwards Android image headers for array sources; object sources drop them.
-export const artwork=(session:Session,id:string,kind:'auto'|'poster'|'backdrop'|'still'|'season'='auto',version?:string)=>[{uri:session.server+`/api/media/${id}/image?kind=${kind}${version?'&v='+encodeURIComponent(version):''}`,headers:{Authorization:'Bearer '+session.token}}];
-export const duration=(value:number)=>`${Math.floor(value/3600)?Math.floor(value/3600)+'h ':''}${Math.floor(value%3600/60)}m`;
-export function quality(media:Media){const v=media.streams.find(s=>s.type==='video');return (v?.height||0)>=4000?'8K':(v?.height||0)>=2000?'4K':(v?.height||0)>=1000?'1080p':`${v?.height||'—'}p`;}
+import { TVLibrary } from './TVLibrary';
+import { TVDetail } from './TVDetail';
+import { artwork, duration, MetadataCredits, quality } from './mediaDisplay';
 const labels:Record<string,string>={all:'Your collection',movies:'Movies',shows:'TV shows',favorites:'Favorites',continue:'Continue watching'};
-export function LibraryScreen({session,view,revision,onSelect,onSeries,onError}:{session:Session;view:string;revision:number;onSelect:(m:Media)=>void;onSeries:(s:SeriesSummary)=>void;onError:(m:string)=>void}){
+export function LibraryScreen({session,view,revision,onSelect,onSeries,onError,initialFocus}:{session:Session;view:string;revision:number;onSelect:(m:Media)=>void;onSeries:(s:SeriesSummary)=>void;onError:(m:string)=>void;initialFocus?:string}){
+  if(isTV)return <TVLibrary session={session} view={view} revision={revision} onSelect={onSelect} onSeries={onSeries} onError={onError} initialFocus={initialFocus}/>;
   const {width}=useWindowDimensions(),theme=useTheme();
   const [query,setQuery]=useState(''),[filter,setFilter]=useState('all'),[items,setItems]=useState<CatalogItem[]>([]),[total,setTotal]=useState(0),[busy,setBusy]=useState(false),[refresh,setRefresh]=useState(0);
   const columns=isTV?5:width>=900?4:width>=600?3:2,actualView=view==='all'&&filter==='continue'?'continue':view;
@@ -28,11 +28,8 @@ export function LibraryScreen({session,view,revision,onSelect,onSeries,onError}:
       </FocusCard>;
     }} ListFooterComponent={items.length<total?<Action loading={busy} onPress={async()=>{setBusy(true);try{const data=await request<{items:CatalogItem[]}>(session,path+`&offset=${items.length}`);setItems(old=>[...old,...data.items]);}catch(e){onError((e as Error).message);}finally{setBusy(false);}}}>Load more titles</Action>:<View style={{height:24}}/>}/>}</View>;
 }
-export function MetadataCredits({sources,onError}:{sources:Media['metadataSources'];onError:(message:string)=>void}){
-  if(!sources?.length)return null;
-  return <View style={styles.chips}><Text variant="bodySmall">Information from</Text>{sources.map(source=><Action key={source.url} compact icon="open-in-new" onPress={()=>void Linking.openURL(source.url).catch(e=>onError(e.message))}>{source.name}{source.name==='TVmaze'?' · CC BY-SA':''}</Action>)}</View>;
-}
 export function DetailScreen({session,media,onPlay,onChange,onError}:{session:Session;media:Media;onPlay:(m:Media)=>void;onChange:(m:Media)=>void;onError:(message:string)=>void}){
+  if(isTV)return <TVDetail session={session} media={media} onPlay={onPlay} onChange={onChange} onError={onError}/>;
   const theme=useTheme(),video=media.streams.find(s=>s.type==='video');const {width}=useWindowDimensions();
   async function favorite(){try{await updateProgress(session,media.id,{favorite:!media.favorite});onChange({...media,favorite:!media.favorite});}catch(e){onError((e as Error).message);}}
   return <ScrollView contentContainerStyle={[styles.detail,isTV&&{padding:32}]}>
