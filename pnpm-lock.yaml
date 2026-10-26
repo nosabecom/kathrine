@@ -85,8 +85,8 @@ importers:
         specifier: ~57.0.4
         version: 57.0.4(expo@57.0.31)
       expo-status-bar:
-        specifier: ~57.0.1
-        version: 57.0.1(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3)
+        specifier: ~58.0.4
+        version: 58.0.4(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3)
       expo-video:
         specifier: ~57.0.5
         version: 57.0.5(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3)
@@ -1659,8 +1659,8 @@ packages:
     resolution: {integrity: sha512-aK+LdKzauHSGmsOStZtyxdzv0zWssCkxTw3m4QuOhfDSJsZaMRTd9O41d8ixU/QfELTbaJ0oRNcF7JFV/7O9YQ==}
     engines: {node: '>=20.16.0'}
 
-  expo-status-bar@57.0.1:
-    resolution: {integrity: sha512-Xwaq1gAoVRWx5dPG5VhT5RSbnI9OilhZnO5qoPBnUaBAa5VzRzfdS8q0/bsPt0jR2DKLtGuP0bQ6efMJ4RIMDg==}
+  expo-status-bar@58.0.4:
+    resolution: {integrity: sha512-e6JJHziSSNb1v1VSzmDrAPf6GFoPRdVOIDrTCcK3bHfbJEAZGZ3YZXfqlorZtUFDT0z6NcjaZf0mPWifJZcqew==}
     peerDependencies:
       expo: '*'
       react: '*'
@@ -4797,7 +4797,7 @@ snapshots:
 
   expo-server@57.0.3: {}
 
-  expo-status-bar@57.0.1(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3):
+  expo-status-bar@58.0.4(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3):
     dependencies:
       expo: 57.0.31(@babel/core@7.29.7(supports-color@8.1.1))(@expo/dom-webview@57.0.1)(react-dom@19.2.3(react@19.2.3))(react-native-tvos@0.86.3-0)(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(supports-color@8.1.1)(typescript@5.9.3)
       react: 19.2.3
