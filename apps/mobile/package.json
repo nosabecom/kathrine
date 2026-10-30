@@ -17,16 +17,16 @@
     "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "expo-video": "~57.0.5",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "react-native": "npm:react-native-tvos@0.86.3-0",
     "react-native-paper": "5.15.3",
-    "react-native-safe-area-context": "~5.7.0",
+    "react-native-safe-area-context": "~5.10.1",
     "react-native-web": "~0.21.4"
   },
   "devDependencies": {
     "@react-native-tvos/config-tv": "0.1.7",
-    "@types/react": "~19.2.18",
+    "@types/react": "~19.3.0",
     "expo-build-properties": "~57.0.22",
     "typescript": "~5.9.3"
   },
