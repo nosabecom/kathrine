@@ -63,3 +63,11 @@ Opening a film or episode requests focus on Resume or Watch now. Opening a serie
 Selecting a library section moves focus to its first title after loading; Home prioritizes Continue watching. Back selects the previous available title, with a fallback when it was removed. A title appearing in both the shelf and grid has one initial focus target. Search keeps keyboard focus while results load. The navigation rail remains reachable with Left and remembers the selected section.
 
 Focus requests target native touchables after mounting, including Paper's inner button. Updates to progress or favorites do not repeatedly request focus. The phone retains touch navigation. Build 0.4.1 uses Android version code 6; installing it on a playing TV must wait until the viewer is ready.
+
+## Subtitle appearance
+
+Open Settings → Customize subtitles, or Subtitles → Customize subtitles during playback. Cinema uses Netflix-inspired white text, a soft black shadow and a clear background. Soft glass adds a translucent background; High contrast uses larger yellow text on a dark background.
+
+The live preview updates as you choose text size, color, text/background opacity, position and edge style. Choices save on the current device and apply to the player without reopening the video. Done or Back closes the editor; Reset to Cinema restores the defaults. The editor supports touch and TV D-pad navigation.
+
+Customization applies to text subtitles, including downloaded text tracks. Bitmap subtitles and text burned into the video retain their original appearance. The native subtitle integration and its build verification are coordinated separately; no deployment, restart or app installation is authorized while the owner is watching.
