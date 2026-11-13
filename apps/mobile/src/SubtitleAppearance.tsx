@@ -4,7 +4,7 @@ import { Card, Divider, Icon, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Action, isTV } from './components';
-import { defaultSubtitleAppearance, nativeSubtitleStyle, subtitlePresets, subtitlePreviewColor, subtitleSizes, type SubtitleAppearance as Appearance } from './subtitleAppearance';
+import { defaultSubtitleAppearance, nativeSubtitleStyle, subtitlePresets, subtitlePreviewColor, subtitleSizes, type SubtitleAppearance as Appearance } from './subtitleAppearancePreferences';
 import { useSubtitleAppearance } from './useSubtitleAppearance';
 
 const sizeNames:Record<Appearance['size'],string>={small:'Small',medium:'Medium',large:'Large',extraLarge:'Extra large'};

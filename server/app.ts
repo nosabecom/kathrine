@@ -17,6 +17,7 @@ import { Scanner, checkedPath } from './library.js';
 import { negotiate, parseRange, capabilitySchema } from './playback.js';
 import { Conversions } from './conversions.js';
 import { shiftWebVtt } from './subtitles.js';
+import { SubtitleLibrary } from './subtitleLibrary.js';
 import { buildSeries, catalog } from './catalog.js';
 import { MetadataEnricher } from './metadata.js';
 import { ArtworkStore, fileImageType } from './artwork.js';
@@ -30,6 +31,7 @@ export async function createApp(options: Partial<typeof config> = {}) {
   await app.register(rateLimit,{max:3000,timeWindow:'1 minute'});
   const {authenticate,admin}=registerAuth(app,db,cfg.dataDir,cfg.secureCookie);
   const scanner=new Scanner(db,cfg.ffprobe,new MetadataEnricher(join(cfg.dataDir,'metadata')),cfg.metadataEnabled);
+  const subtitles=new SubtitleLibrary(db,cfg.subdlApiKey,cfg.subtitleAuto);
   const artwork=new ArtworkStore(join(cfg.dataDir,'images','artwork'));
   const conversions=new Conversions({root:join(cfg.dataDir,'streams'),ffmpeg:cfg.ffmpeg,max:cfg.maxConversions,cacheLimit:cfg.cacheLimit});
   await conversions.initialize();
@@ -135,6 +137,7 @@ export async function createApp(options: Partial<typeof config> = {}) {
     const{id}=mediaParam.parse(req.params),row=getMedia(id,req.user.id);if(!row)return reply.code(404).send({error:'Media not found.'});
     const body=z.object({capabilities:capabilitySchema,allowCompatibility:z.boolean().default(false),audioIndex:z.number().int().optional(),startAt:z.number().finite().nonnegative().default(0)}).parse(req.body);
     const media=publicMedia(row),file=await mediaFile(row);
+    subtitles.touchPlayback(id);
     const plan=negotiate(media,body.capabilities,{audioIndex:body.audioIndex,allowCompatibility:body.allowCompatibility,allowVideoTranscode:cfg.allowVideoTranscode});
     if(plan.mode==='unsupported')return{plan,url:null};
     if(plan.mode==='direct')return{plan,url:`/stream/${id}/original`,offset:0,resumeAt:body.startAt,mimeType:media.container==='mkv'?'video/x-matroska':media.container==='ts'?'video/mp2t':`video/${media.container}`};
@@ -146,6 +149,7 @@ export async function createApp(options: Partial<typeof config> = {}) {
   app.route({method:['GET','HEAD'],url:'/stream/:id/original',preHandler:authenticate,handler:async(req,reply)=>{
     const{id}=mediaParam.parse(req.params),row=getRow(id);if(!row)return reply.code(404).send({error:'Media not found.'});
     const file=await mediaFile(row),info=await stat(file);
+    subtitles.touchPlayback(id);
     const etag=`"${row.id}-${info.size}-${Math.floor(info.mtimeMs)}"`;
     const useRange=!req.headers['if-range']||req.headers['if-range']===etag;
     const range=parseRange(useRange?req.headers.range:undefined,info.size);
@@ -176,6 +180,30 @@ export async function createApp(options: Partial<typeof config> = {}) {
     const{stdout}=await exec(cfg.ffmpeg,['-hide_banner','-loglevel','error','-nostdin','-i',file,'-map',`0:${index}`,'-f','webvtt','-'],{timeout:30_000,maxBuffer:10*1024*1024});
     reply.type('text/vtt').header('Cache-Control','private, max-age=3600');return shiftWebVtt(stdout,offset);
   });
+  app.get('/api/media/:id/subtitles',{preHandler:authenticate},async(req,reply)=>{
+    const {id}=mediaParam.parse(req.params),row=getRow(id);if(!row)return reply.code(404).send({error:'Media not found.'});
+    return subtitles.inventory(row);
+  });
+  app.get('/api/media/:id/subtitle-files/:track',{preHandler:authenticate},async(req,reply)=>{
+    const {id,track}=z.object({id:z.string().max(100),track:z.string().regex(/^(subdl|local-[a-f0-9]{16})$/)}).parse(req.params);
+    const {offset}=z.object({offset:z.coerce.number().finite().nonnegative().max(1e9).default(0)}).parse(req.query);
+    const row=getRow(id);if(!row)return reply.code(404).send({error:'Media not found.'});
+    reply.type('text/vtt').header('Cache-Control','private, no-cache');return shiftWebVtt(await subtitles.content(row,track),offset);
+  });
+  app.post('/api/media/:id/subtitles/fetch',{preHandler:admin},async(req,reply)=>{
+    const {id}=mediaParam.parse(req.params);if(!getRow(id))return reply.code(404).send({error:'Media not found.'});
+    const {replace}=z.object({replace:z.boolean().default(false)}).parse(req.body||{});
+    if(!subtitles.configured)return reply.code(409).send({error:'Configure KATHRINE_SUBDL_API_KEY on the server first.'});
+    if(!subtitles.start(id,replace))return reply.code(409).send({error:'A subtitle search is already running.'});
+    return reply.code(202).send({started:true});
+  });
+  app.get('/api/subtitles/status',{preHandler:admin},async()=>({configured:subtitles.configured,automatic:cfg.subtitleAuto,...subtitles.status}));
+  app.get('/api/subtitles/audit',{preHandler:admin},async()=>subtitles.audit());
+  app.post('/api/subtitles/run',{preHandler:admin},async(_req,reply)=>{
+    if(!subtitles.configured)return reply.code(409).send({error:'Configure KATHRINE_SUBDL_API_KEY on the server first.'});
+    if(!subtitles.start())return reply.code(409).send({error:'A subtitle search is already running.'});
+    return reply.code(202).send({started:true});
+  });
   app.get('/api/status',{preHandler:authenticate},async()=>({
     name:'Kathrine',hostname:hostname(),uptime:uptime(),cpu:cpus()[0]?.model,cores:cpus().length,load:loadavg()[0],memory:{total:totalmem(),free:freemem()},
     mediaCount:(db.prepare('SELECT count(*) as n FROM media WHERE available=1').get() as{n:number}).n,
@@ -189,6 +217,13 @@ export async function createApp(options: Partial<typeof config> = {}) {
     app.setNotFoundHandler((req,reply)=>req.url.startsWith('/api/')||req.url.startsWith('/stream/')||req.url.startsWith('/downloads/')?reply.code(404).send({error:'Not found.'}):reply.sendFile('index.html'));
   }
   const autoScan=setInterval(()=>scanner.start(),30*60_000);autoScan.unref();
-  app.addHook('onClose',async()=>{clearInterval(autoScan);await scanner.close();await Promise.allSettled(thumbs.values());await conversions.close();db.close();});
-  return {app,db,scanner,conversions,cfg};
+  let subtitleTimer:NodeJS.Timeout|undefined;
+  const sourceWhenIdle=()=>{
+    if(!cfg.subtitleAuto)return;
+    if(!scanner.status.running)subtitles.start();
+    subtitleTimer=setTimeout(sourceWhenIdle,scanner.status.running?60_000:30*60_000);subtitleTimer.unref();
+  };
+  if(cfg.subtitleAuto){subtitleTimer=setTimeout(sourceWhenIdle,60_000);subtitleTimer.unref();}
+  app.addHook('onClose',async()=>{clearInterval(autoScan);clearTimeout(subtitleTimer);await subtitles.close();await scanner.close();await Promise.allSettled(thumbs.values());await conversions.close();db.close();});
+  return {app,db,scanner,conversions,subtitles,cfg};
 }

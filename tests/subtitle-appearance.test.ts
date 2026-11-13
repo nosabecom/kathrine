@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultSubtitleAppearance, nativeSubtitleStyle, normalizeSubtitleAppearance, subtitlePreviewColor, SubtitleAppearanceStore } from '../apps/mobile/src/subtitleAppearance.js';
+import { defaultSubtitleAppearance, nativeSubtitleStyle, normalizeSubtitleAppearance, subtitlePreviewColor, SubtitleAppearanceStore } from '../apps/mobile/src/subtitleAppearancePreferences.js';
 
 test('invalid stored appearance cannot produce invisible text or invalid native parameters',()=>{
   const appearance=normalizeSubtitleAppearance({size:'huge',color:'#invalid',textOpacity:-10,background:'__proto__',backgroundOpacity:100,position:'outside',edge:'toString'});

@@ -1,0 +1,339 @@
+diff --git a/android/src/main/java/expo/modules/video/FullscreenPlayerActivity.kt b/android/src/main/java/expo/modules/video/FullscreenPlayerActivity.kt
+index 45d3d7b90bf41ca9a2b2a4ff8acb9988843e745a..dd9b6a127e41cd6112cd34b678991c12cf8fa87d 100644
+--- a/android/src/main/java/expo/modules/video/FullscreenPlayerActivity.kt
++++ b/android/src/main/java/expo/modules/video/FullscreenPlayerActivity.kt
+@@ -27,6 +27,11 @@ import expo.modules.video.managers.VideoManager
+ 
+ @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+ class FullscreenPlayerActivity : Activity(), VideoManagerListener {
++  fun applySubtitleStyle() {
++    if (::playerView.isInitialized && ::videoView.isInitialized) {
++      SubtitleUtils.setCustomStyle(playerView, this, videoView.subtitleStyle)
++    }
++  }
+   private lateinit var mContentView: View
+   private var videoViewId: String? = null
+   private var videoPlayer: VideoPlayer? = null
+@@ -110,7 +115,7 @@ class FullscreenPlayerActivity : Activity(), VideoManagerListener {
+     playerView.setShowSubtitleButton(videoView.buttonOptions.showSubtitles ?: videoView.currentTrackHasSubtitles)
+ 
+     // Configure subtitle view to fix sizing issues with embedded styles (same as VideoView)
+-    SubtitleUtils.configureSubtitleView(playerView, this)
++    applySubtitleStyle()
+ 
+     // Set up listener for accessibility caption changes
+     setupCaptioningChangeListener()
+@@ -144,7 +149,7 @@ class FullscreenPlayerActivity : Activity(), VideoManagerListener {
+     orientationHelper?.startOrientationEventListener()
+     playerView.useController = true
+     // Reconfigure subtitles when resuming (handles returning from settings)
+-    SubtitleUtils.configureSubtitleView(playerView, this)
++    applySubtitleStyle()
+     super.onResume()
+   }
+ 
+@@ -172,6 +177,7 @@ class FullscreenPlayerActivity : Activity(), VideoManagerListener {
+ 
+   override fun onDestroy() {
+     super.onDestroy()
++    if (::playerView.isInitialized) SubtitleUtils.detach(playerView)
+ 
+     // Clean up captioning change listener
+     captioningChangeListener?.let {
+diff --git a/android/src/main/java/expo/modules/video/VideoModule.kt b/android/src/main/java/expo/modules/video/VideoModule.kt
+index 71b85013e3a69f4421a689e7dd76677e333d7581..4f28784ebbfba62f21fb8dd72fe19f8a59610477 100644
+--- a/android/src/main/java/expo/modules/video/VideoModule.kt
++++ b/android/src/main/java/expo/modules/video/VideoModule.kt
+@@ -399,6 +399,9 @@ private inline fun <reified T : VideoView> ViewDefinitionBuilder<T>.VideoViewCom
+   Prop("nativeControls") { view: T, useNativeControls: Boolean ->
+     view.useNativeControls = useNativeControls
+   }
++  Prop("subtitleStyle") { view: T, style: expo.modules.video.records.SubtitleStyle? ->
++    view.subtitleStyle = style
++  }
+   Prop("contentFit") { view: T, contentFit: ContentFit ->
+     view.contentFit = contentFit
+   }
+diff --git a/android/src/main/java/expo/modules/video/VideoView.kt b/android/src/main/java/expo/modules/video/VideoView.kt
+index 58c8b10da87883f0f25b311957c51a0310f788cd..fd18670ae10a6898017dbd8a988374a9acda9823 100644
+--- a/android/src/main/java/expo/modules/video/VideoView.kt
++++ b/android/src/main/java/expo/modules/video/VideoView.kt
+@@ -28,6 +28,7 @@ import expo.modules.video.listeners.VideoViewListener
+ import expo.modules.video.records.AudioTrack
+ import expo.modules.video.records.ButtonOptions
+ import expo.modules.video.records.SubtitleTrack
++import expo.modules.video.records.SubtitleStyle
+ import expo.modules.video.records.VideoSource
+ import expo.modules.video.records.VideoTrack
+ import expo.modules.video.records.FullscreenOptions
+@@ -63,6 +64,13 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+   var showsAudioTracksButton = false
+     private set
+ 
++  var subtitleStyle: SubtitleStyle? = null
++    set(value) {
++      field = value
++      SubtitleUtils.setCustomStyle(playerView, context, value)
++      VideoManager.updateSubtitleStyle(videoViewId)
++    }
++
+   var requiresLinearPlayback: Boolean = false
+     set(value) {
+       field = value
+@@ -237,6 +245,7 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+ 
+   fun attachPlayer() {
+     videoPlayer?.changeVideoView(this)
++    post { SubtitleUtils.configureSubtitleView(playerView, context) }
+   }
+ 
+   fun exitFullscreen() {
+@@ -374,6 +383,7 @@ open class VideoView(context: Context, appContext: AppContext, useTextureView: B
+ 
+   override fun onDetachedFromWindow() {
+     super.onDetachedFromWindow()
++    SubtitleUtils.detach(playerView)
+ 
+     // Clean up captioning change listener
+     captioningChangeListener?.let {
+diff --git a/android/src/main/java/expo/modules/video/managers/VideoManager.kt b/android/src/main/java/expo/modules/video/managers/VideoManager.kt
+index 5f9ad2a5bdf5e9e79f0d80b9d6d2cf635bd8704c..ddcac59d66a9aa3990d02baf72bffda898b77500 100644
+--- a/android/src/main/java/expo/modules/video/managers/VideoManager.kt
++++ b/android/src/main/java/expo/modules/video/managers/VideoManager.kt
+@@ -101,6 +101,10 @@ object VideoManager {
+     fullscreenPlayerActivities.remove(id)
+   }
+ 
++  fun updateSubtitleStyle(id: String) {
++    fullscreenPlayerActivities[id]?.get()?.applySubtitleStyle()
++  }
++
+   fun finishFullscreenPlayer(id: String) {
+     val activityRef = fullscreenPlayerActivities[id]
+     activityRef?.get()?.finish()
+diff --git a/android/src/main/java/expo/modules/video/records/ExternalSubtitle.kt b/android/src/main/java/expo/modules/video/records/ExternalSubtitle.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..95f150febd2558ce188eef6eb041d718f20f09b1
+--- /dev/null
++++ b/android/src/main/java/expo/modules/video/records/ExternalSubtitle.kt
+@@ -0,0 +1,22 @@
++package expo.modules.video.records
++
++import android.net.Uri
++import androidx.media3.common.MediaItem
++import expo.modules.kotlin.records.Field
++import expo.modules.kotlin.records.Record
++import expo.modules.kotlin.types.OptimizedRecord
++import java.io.Serializable
++
++@OptimizedRecord
++@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
++class ExternalSubtitle(
++  @Field val uri: Uri = Uri.EMPTY,
++  @Field val language: String = "en",
++  @Field val label: String = "English",
++  @Field val id: String = "external",
++  @Field val mimeType: String = "text/vtt"
++) : Record, Serializable {
++  fun toConfiguration() = MediaItem.SubtitleConfiguration.Builder(uri)
++    .setId(id).setLanguage(language).setLabel(label).setMimeType(mimeType)
++    .setSelectionFlags(0).build()
++}
+diff --git a/android/src/main/java/expo/modules/video/records/SubtitleStyle.kt b/android/src/main/java/expo/modules/video/records/SubtitleStyle.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..c578f717ef24ed74611f588171c859ced52f89b1
+--- /dev/null
++++ b/android/src/main/java/expo/modules/video/records/SubtitleStyle.kt
+@@ -0,0 +1,17 @@
++package expo.modules.video.records
++
++import expo.modules.kotlin.records.Field
++import expo.modules.kotlin.records.Record
++import expo.modules.kotlin.types.OptimizedRecord
++import java.io.Serializable
++
++@OptimizedRecord
++class SubtitleStyle(
++  @Field val fontSize: Float = 24f,
++  @Field val foregroundColor: String = "#FFFFFFFF",
++  @Field val backgroundColor: String = "#00000000",
++  @Field val windowColor: String = "#00000000",
++  @Field val edgeColor: String = "#FF000000",
++  @Field val edgeType: String = "dropShadow",
++  @Field val bottomPaddingFraction: Float = 0.08f
++) : Record, Serializable
+diff --git a/android/src/main/java/expo/modules/video/records/VideoSource.kt b/android/src/main/java/expo/modules/video/records/VideoSource.kt
+index b0bfb494a008e02396e01ddb7f4857f0f3f70d7d..21284de23545656e9573454e5fdfccbdf5a8e084 100644
+--- a/android/src/main/java/expo/modules/video/records/VideoSource.kt
++++ b/android/src/main/java/expo/modules/video/records/VideoSource.kt
+@@ -28,7 +28,8 @@ class VideoSource(
+   @Field var metadata: VideoMetadata? = null,
+   @Field var headers: Map<String, String>? = null,
+   @Field var useCaching: Boolean = false,
+-  @Field val contentType: ContentType = ContentType.AUTO
++  @Field val contentType: ContentType = ContentType.AUTO,
++  @Field val subtitleTracks: List<ExternalSubtitle> = emptyList()
+ ) : Record, Serializable {
+   private fun toMediaId(): String {
+     return "uri:${this.uri}" +
+@@ -41,7 +42,8 @@ class VideoSource(
+       "NotificationDataTitle:${this.metadata?.title}" +
+       "NotificationDataSecondaryText:${this.metadata?.artist}" +
+       "NotificationDataArtwork:${this.metadata?.artwork?.path}" +
+-      "ContentType:${this.contentType.value}"
++      "ContentType:${this.contentType.value}" +
++      "Subtitles:${subtitleTracks.map { "${it.id}:${it.uri}" }}"
+   }
+ 
+   fun toMediaSource(context: Context): MediaSource? {
+@@ -53,6 +55,7 @@ class VideoSource(
+     .Builder()
+     .apply {
+       setUri(parseLocalAssetId(uri, context))
++      setSubtitleConfigurations(subtitleTracks.map { it.toConfiguration() })
+       contentType.toMimeTypeString()?.let {
+         setMimeType(it)
+       }
+diff --git a/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt b/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
+index 52bdcd8593f901bccbfb3ecef34b6cb59288ae65..9334a757c35e0592d6100ca9b2f958a232be2afe 100644
+--- a/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
++++ b/android/src/main/java/expo/modules/video/utils/SubtitleUtils.kt
+@@ -1,18 +1,86 @@
+ package expo.modules.video.utils
+ 
+ import android.content.Context
++import android.graphics.Color
+ import android.util.TypedValue
+ import android.view.accessibility.CaptioningManager
+ import androidx.media3.ui.CaptionStyleCompat
+ import androidx.media3.ui.PlayerView
++import androidx.media3.common.Player
++import androidx.media3.common.text.Cue
++import androidx.media3.common.text.CueGroup
++import expo.modules.video.records.SubtitleStyle
++import java.lang.ref.WeakReference
++import java.util.WeakHashMap
+ 
++@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+ object SubtitleUtils {
++  private val styles = WeakHashMap<PlayerView, SubtitleStyle>()
++  private val bindings = WeakHashMap<PlayerView, Pair<Player, Player.Listener>>()
++
++  fun setCustomStyle(view: PlayerView, context: Context, style: SubtitleStyle?) {
++    if (style == null) styles.remove(view) else styles[view] = style
++    configureSubtitleView(view, context)
++  }
++
++  fun detach(view: PlayerView) {
++    bindings.remove(view)?.let { (player, listener) -> player.removeListener(listener) }
++  }
++
++  private fun positioned(view: PlayerView) {
++    val style = styles[view] ?: return
++    val cues = view.player?.currentCues?.cues ?: return
++    view.subtitleView?.setCues(cues.map { cue ->
++      if (cue.bitmap != null) cue else cue.buildUpon()
++        .setLine(1f - style.bottomPaddingFraction.coerceIn(0f, .9f), Cue.LINE_TYPE_FRACTION)
++        .setLineAnchor(Cue.ANCHOR_TYPE_END).build()
++    })
++  }
++
++  private fun color(value: String, fallback: Int): Int =
++    try { Color.parseColor(value) } catch (_: IllegalArgumentException) { fallback }
+   /**
+    * Configures the PlayerView's subtitle view to fix sizing issues with embedded styles.
+    * Disables embedded HLS subtitle styling and applies Android accessibility settings
+    * with a reasonable base font size.
+    */
+   fun configureSubtitleView(playerView: PlayerView, context: Context) {
++    val custom = styles[playerView]
++    if (custom != null) {
++      playerView.subtitleView?.apply {
++        setApplyEmbeddedStyles(false)
++        setApplyEmbeddedFontSizes(false)
++        setStyle(CaptionStyleCompat(
++          color(custom.foregroundColor, Color.WHITE), color(custom.backgroundColor, Color.TRANSPARENT),
++          color(custom.windowColor, Color.TRANSPARENT),
++          when (custom.edgeType) { "outline" -> CaptionStyleCompat.EDGE_TYPE_OUTLINE; "none" -> CaptionStyleCompat.EDGE_TYPE_NONE; else -> CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW },
++          color(custom.edgeColor, Color.BLACK), null
++        ))
++        setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, custom.fontSize.coerceIn(12f, 64f))
++        setBottomPaddingFraction(custom.bottomPaddingFraction.coerceIn(0f, .9f))
++      }
++      val player = playerView.player
++      if (bindings[playerView]?.first !== player) {
++        detach(playerView)
++        if (player != null) {
++          val reference = WeakReference(playerView)
++          val listener = object : Player.Listener {
++            override fun onCues(cueGroup: CueGroup) {
++              // PlayerView applies its own cues too. Post after all listeners so
++              // explicit source Cue.line values cannot override the user's position.
++              reference.get()?.let { view -> view.post {
++                if (view.player === player && bindings.containsKey(view)) positioned(view)
++              } }
++            }
++          }
++          player.addListener(listener)
++          bindings[playerView] = Pair(player, listener)
++        }
++      }
++      positioned(playerView)
++      return
++    }
++    detach(playerView)
+     playerView.subtitleView?.apply {
+       setApplyEmbeddedStyles(false)
+       setApplyEmbeddedFontSizes(false)
+diff --git a/build/VideoPlayer.types.d.ts b/build/VideoPlayer.types.d.ts
+index 8acf5e5923f85fe1513ff1c651df5443d440365e..869286f47068e8c2a7835d7d686b8f3a7897430c 100644
+--- a/build/VideoPlayer.types.d.ts
++++ b/build/VideoPlayer.types.d.ts
+@@ -295,6 +295,8 @@ export type VideoThumbnailOptions = {
+ export type VideoPlayerStatus = 'idle' | 'loading' | 'readyToPlay' | 'error';
+ export type VideoSource = string | number | null | VideoSourceObject;
+ export type VideoSourceObject = {
++    /** External subtitle sources share this source's authenticated headers. Android only. */
++    subtitleTracks?: {uri:string;language:string;label:string;id:string;mimeType?:string}[];
+     /**
+      * The URI of the video.
+      *
+diff --git a/build/VideoView.types.d.ts b/build/VideoView.types.d.ts
+index 1e9cdeb2380f36d259ebf9115146ba6c8afcaded..4438d906c1de0e1abc449a2baca58bac08981840 100644
+--- a/build/VideoView.types.d.ts
++++ b/build/VideoView.types.d.ts
+@@ -17,6 +17,8 @@ export type VideoContentFit = 'contain' | 'cover' | 'fill';
+  */
+ export type SurfaceType = 'textureView' | 'surfaceView';
+ export interface VideoViewProps extends ViewProps {
++    /** Android text subtitle appearance. Eight-digit colors use #AARRGGBB. */
++    subtitleStyle?: {fontSize?:number;foregroundColor?:string;backgroundColor?:string;windowColor?:string;edgeColor?:string;edgeType?:'none'|'outline'|'dropShadow';bottomPaddingFraction?:number};
+     /**
+      * A video player instance. Use [`useVideoPlayer()`](#usevideoplayersource-setup) hook to create one.
+      */
+diff --git a/src/VideoPlayer.types.ts b/src/VideoPlayer.types.ts
+index 76436a4da9167a58a5e76c7f10b878c6703838e3..3be6d8d257c1e279f478d5176f981db75e581020 100644
+--- a/src/VideoPlayer.types.ts
++++ b/src/VideoPlayer.types.ts
+@@ -346,6 +346,8 @@ export type VideoPlayerStatus = 'idle' | 'loading' | 'readyToPlay' | 'error';
+ export type VideoSource = string | number | null | VideoSourceObject;
+ 
+ export type VideoSourceObject = {
++  /** External subtitle sources share this source's authenticated headers. Android only. */
++  subtitleTracks?: {uri:string;language:string;label:string;id:string;mimeType?:string}[];
+   /**
+    * The URI of the video.
+    *
+diff --git a/src/VideoView.types.ts b/src/VideoView.types.ts
+index 665adefa37834affc5ec88ddbd706b1477b0c288..dff8426491494cfd5b1e349a767b8630c5cb0d53 100644
+--- a/src/VideoView.types.ts
++++ b/src/VideoView.types.ts
+@@ -21,6 +21,8 @@ export type VideoContentFit = 'contain' | 'cover' | 'fill';
+ export type SurfaceType = 'textureView' | 'surfaceView';
+ 
+ export interface VideoViewProps extends ViewProps {
++  /** Android text subtitle appearance. Eight-digit colors use #AARRGGBB. */
++  subtitleStyle?: {fontSize?:number;foregroundColor?:string;backgroundColor?:string;windowColor?:string;edgeColor?:string;edgeType?:'none'|'outline'|'dropShadow';bottomPaddingFraction?:number};
+   /**
+    * A video player instance. Use [`useVideoPlayer()`](#usevideoplayersource-setup) hook to create one.
+    */

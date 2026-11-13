@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  expo-video@57.0.5: 127ce5aefbfc94f420db0915d43f3b2b79350f540d97f61bec0d8023810b1f85
+
 importers:
 
   .:
@@ -89,7 +92,7 @@ importers:
         version: 57.0.1(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3)
       expo-video:
         specifier: ~57.0.5
-        version: 57.0.5(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3)
+        version: 57.0.5(patch_hash=127ce5aefbfc94f420db0915d43f3b2b79350f540d97f61bec0d8023810b1f85)(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3)
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -4803,7 +4806,7 @@ snapshots:
       react: 19.2.3
       react-native: react-native-tvos@0.86.3-0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.2.18)(react-native-tvos@0.86.3-0)(react@19.2.3)(supports-color@8.1.1)
 
-  expo-video@57.0.5(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3):
+  expo-video@57.0.5(patch_hash=127ce5aefbfc94f420db0915d43f3b2b79350f540d97f61bec0d8023810b1f85)(expo@57.0.31)(react-native-tvos@0.86.3-0)(react@19.2.3):
     dependencies:
       expo: 57.0.31(@babel/core@7.29.7(supports-color@8.1.1))(@expo/dom-webview@57.0.1)(react-dom@19.2.3(react@19.2.3))(react-native-tvos@0.86.3-0)(react-native-web@0.21.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(supports-color@8.1.1)(typescript@5.9.3)
       react: 19.2.3

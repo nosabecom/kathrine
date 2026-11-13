@@ -11,4 +11,6 @@ export const config = {
   allowVideoTranscode: process.env.KATHRINE_VIDEO_TRANSCODE === 'true',
   maxConversions: Number(process.env.KATHRINE_MAX_CONVERSIONS || 1),
   cacheLimit: Number(process.env.KATHRINE_CACHE_GB || 32) * 1024 ** 3,
+  subdlApiKey: process.env.KATHRINE_SUBDL_API_KEY || '',
+  subtitleAuto: process.env.KATHRINE_SUBTITLES_AUTO === 'true',
 };

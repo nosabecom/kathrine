@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 mkdir -p .artifacts
 stage=$(mktemp -d "$PWD/.artifacts/ewaste-tests.XXXXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
-pnpm exec tsc --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --outDir "$stage" tests/integration.test.ts tests/playback.test.ts tests/catalog.test.ts tests/metadata.test.ts
+pnpm exec tsc --strict --target ES2023 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --outDir "$stage" tests/integration.test.ts tests/playback.test.ts tests/catalog.test.ts tests/metadata.test.ts tests/subtitles.test.ts
 printf '{"type":"module"}\n' > "$stage/package.json"
 remote_dir=$(ssh -o BatchMode=yes ewaste 'mktemp -d "$HOME/kathrine-verification.XXXXXXXX"')
 if [[ ! "$remote_dir" =~ ^/home/nosa/kathrine-verification\.[A-Za-z0-9]+$ ]]; then
@@ -19,5 +19,5 @@ case "$verification_dir" in "$HOME"/kathrine-verification.*) ;; *) exit 1 ;; esa
 trap 'rm -rf -- "$verification_dir"' EXIT
 ln -s "$HOME/kathrine/current/node_modules" "$verification_dir/node_modules"
 cd "$verification_dir"
-"$HOME/.local/bin/node" --test tests/*.test.js
+ionice -c 3 nice -n 15 "$HOME/.local/bin/node" --test tests/*.test.js
 REMOTE

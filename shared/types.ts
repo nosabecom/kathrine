@@ -34,3 +34,8 @@ export type PlaybackPlan = {
 export type Library = { id: string; name: string; path: string; kind: 'movies' | 'shows' | 'mixed'; count: number };
 export type User = { id: string; username: string; admin: boolean };
 export type ScanStatus = { running: boolean; scanned: number; added: number; errors: string[]; startedAt: number | null; finishedAt: number | null };
+export type SubtitleFile = {
+  id:string; language:string; label:string; source:'embedded'|'sidecar'|'subdl';
+  url:string; nativeOnly?:boolean; embeddedIndex?:number; sourceUrl?:string;
+};
+export type SubtitleInventory = { tracks:SubtitleFile[]; providerConfigured:boolean };

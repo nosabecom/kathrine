@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { nativeSubtitleStyle, SubtitleAppearanceStore } from './subtitleAppearance';
+import { nativeSubtitleStyle, SubtitleAppearanceStore } from './subtitleAppearancePreferences';
 
 const key='kathrine.subtitleAppearance.v1';
 const store=new SubtitleAppearanceStore({

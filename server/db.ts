@@ -17,6 +17,8 @@ export function openDatabase(dataDir: string) {
     CREATE INDEX IF NOT EXISTS media_library ON media(library_id);
     CREATE INDEX IF NOT EXISTS session_expiry ON sessions(expires);
     CREATE TABLE IF NOT EXISTS pairing(code TEXT PRIMARY KEY, device TEXT NOT NULL, poll_hash TEXT NOT NULL, user_id TEXT REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS subtitle_downloads(media_id TEXT PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, version TEXT NOT NULL, language TEXT NOT NULL, label TEXT NOT NULL, source_url TEXT NOT NULL, content TEXT NOT NULL, added_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS subtitle_attempts(media_id TEXT PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, version TEXT NOT NULL, attempted_at INTEGER NOT NULL, status TEXT NOT NULL);
   `);
   db.prepare('DELETE FROM sessions WHERE expires < ?').run(Date.now());
   db.prepare('DELETE FROM pairing WHERE expires < ?').run(Date.now());

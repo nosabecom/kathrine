@@ -18,7 +18,7 @@ test('server authentication, library, original playback, compatibility, and isol
   await mkdir(join(library,'Sample'));
   await copyFile(file,join(library,'Sample','preview.mkv'));
   await copyFile(file,join(library,'Example.sample.mkv'));
-  const {app,db,scanner,conversions}=await createApp({dataDir:data,webDir:join(root,'missing'),maxConversions:1,metadataEnabled:false});
+  const {app,db,scanner,conversions}=await createApp({dataDir:data,webDir:join(root,'missing'),maxConversions:1,metadataEnabled:false,subdlApiKey:'',subtitleAuto:false});
   let token='',viewerToken='',id='',media:any;
   const request=async(method:'GET'|'POST'|'PUT'|'DELETE'|'HEAD',url:string,payload?:any,auth=token,headers:Record<string,string>={})=>app.inject({method,url,payload,headers:{...(auth?{authorization:'Bearer '+auth}:{}),...headers}});
   try{
@@ -60,10 +60,30 @@ test('server authentication, library, original playback, compatibility, and isol
       assert.equal((await request('GET',`/api/media/${id}/subtitles/${index}?offset=-1`)).statusCode,400);
     });
     await t.test('range playback, suffixes, HEAD, If-Range, and invalid ranges use real source bytes',async()=>{const bytes=await readFile(file);const response=await request('GET',`/stream/${id}/original`,undefined,token,{range:'bytes=16-79'});assert.equal(response.statusCode,206);assert.deepEqual(response.rawPayload,bytes.subarray(16,80));assert.equal(response.headers['content-range'],`bytes 16-79/${bytes.length}`);const suffix=await request('GET',`/stream/${id}/original`,undefined,token,{range:'bytes=-32'});assert.deepEqual(suffix.rawPayload,bytes.subarray(-32));const head=await request('HEAD',`/stream/${id}/original`);assert.equal(head.body,'');assert.equal(Number(head.headers['content-length']),bytes.length);const invalid=await request('GET',`/stream/${id}/original`,undefined,token,{range:'bytes=999999999999-'});assert.equal(invalid.statusCode,416);const stale=await request('GET',`/stream/${id}/original`,undefined,token,{range:'bytes=16-79','if-range':'"stale"'});assert.equal(stale.statusCode,200);assert.deepEqual(stale.rawPayload,bytes);});
+    await t.test('external subtitles are authenticated, language-labelled, shifted and isolated from source media',async()=>{
+      const before=await readFile(file),sidecar=join(library,'Example.2024.1080p.en.srt');await copyFile(subtitles,sidecar);
+      try {
+        const manifest=await request('GET',`/api/media/${id}/subtitles`);assert.equal(manifest.statusCode,200,manifest.body);
+        const track=manifest.json().tracks.find((x:any)=>x.source==='sidecar');assert.ok(track);assert.equal(track.language,'en');assert.equal(JSON.stringify(manifest.json()).includes(library),false);
+        assert.equal((await request('GET',track.url,undefined,'')).statusCode,401);
+        const resumed=await request('GET',track.url+'?offset=3');assert.equal(resumed.statusCode,200,resumed.body);assert.match(resumed.headers['content-type'] as string,/text\/vtt/);assert.doesNotMatch(resumed.body,/Before resume/);assert.match(resumed.body,/Spans resume/);
+        assert.equal((await request('GET',`/api/media/${id}/subtitle-files/not-a-track`)).statusCode,400);
+        assert.equal((await request('GET','/api/subtitles/audit')).json().accuracyVerified,false);
+        assert.equal((await request('GET','/api/subtitles/status')).json().configured,false);
+        assert.equal((await request('POST','/api/subtitles/run',{})).statusCode,409);
+        assert.equal((await request('POST',`/api/media/${id}/subtitles/fetch`,{})).statusCode,409);
+        const row=db.prepare('SELECT mtime,size FROM media WHERE id=?').get(id) as any;
+        db.prepare('INSERT INTO subtitle_downloads VALUES(?,?,?,?,?,?,?)').run(id,`${row.mtime}:${row.size}`,'en','English · SubDL · release match','https://subdl.com/','WEBVTT\n\n00:00:01.000 --> 00:00:04.000\nDownloaded caption\n',Date.now());
+        const cached=await request('GET',`/api/media/${id}/subtitle-files/subdl?offset=2`);assert.equal(cached.statusCode,200,cached.body);assert.match(cached.body,/00:00:00.000 --> 00:00:02.000/);
+        assert.deepEqual(await readFile(file),before);
+      } finally {db.prepare('DELETE FROM subtitle_downloads WHERE media_id=?').run(id);await rm(sidecar,{force:true});}
+    });
     await t.test('sparse files seek beyond 4 GB without loading the file into memory',async()=>{const sparse=join(library,'large.mkv'),handle=await open(sparse,'w');const offset=5*1024**3;await handle.truncate(offset+4);await handle.write(Buffer.from('8K!!'),0,4,offset);await handle.close();db.prepare('INSERT INTO media VALUES(?,?,?,?,?,?,?,1)').run('large',media.libraryId,sparse,0,offset+4,JSON.stringify({...media,size:offset+4}),Date.now());const r=await request('GET','/stream/large/original',undefined,token,{range:`bytes=${offset}-${offset+3}`});assert.equal(r.statusCode,206);assert.equal(r.body,'8K!!');db.prepare('DELETE FROM media WHERE id=?').run('large');});
     await t.test('playback planning returns original media without a server conversion',async()=>{const caps={client:'android',device:'test',containers:['mkv'],video:[{codec:'h264',maxWidth:1920,maxHeight:1080,maxFrameRate:60,maxBitDepth:8}],audio:['eac3','aac'],passthrough:[],hdr:[]};const r=await request('POST',`/api/media/${id}/playback`,{capabilities:caps,startAt:2});assert.equal(r.statusCode,200,r.body);assert.equal(r.json().plan.mode,'direct');assert.equal(r.json().resumeAt,2);assert.equal(r.json().offset,0);assert.equal(conversions.jobs.size,0);});
     await t.test('per-user progress and favorites persist and remain isolated',async()=>{assert.equal((await request('PUT',`/api/media/${id}/progress`,{position:2,favorite:true})).statusCode,200);const v=await request('POST','/api/users',{username:'viewer',password:'another test password'});assert.equal(v.statusCode,200,v.body);const login=await request('POST','/api/auth/login',{username:'viewer',password:'another test password',native:true});viewerToken=login.json().token;const owner=await request('GET','/api/media?view=favorites');assert.equal(owner.json().total,1);const viewer=await request('GET','/api/media?view=favorites',undefined,viewerToken);assert.equal(viewer.json().total,0);assert.equal((await request('POST','/api/scan',{},viewerToken)).statusCode,403);const libs=await request('GET','/api/libraries',undefined,viewerToken);assert.equal(libs.json()[0].path,undefined);});
     await t.test('series catalog groups before pagination and preserves ordered, private episode history',async()=>{
+      assert.equal((await request('GET','/api/subtitles/audit',undefined,viewerToken)).statusCode,403);
+      assert.equal((await request('POST',`/api/media/${id}/subtitles/fetch`,{},viewerToken)).statusCode,403);
       const shows=join(root,'shows');await mkdir(shows);
       db.prepare('INSERT INTO libraries VALUES(?,?,?,?)').run('series-test','TV shows',shows,'shows');
       try {
