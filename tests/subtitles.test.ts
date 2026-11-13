@@ -34,7 +34,19 @@ test('subtitle matching rejects wrong titles, episodes, frame rates, releases an
     (p:any)=>p.subtitles[0].url='https://evil.example/subtitle/test',
     (p:any)=>p.subtitles[0].language='FA',
   ]){const p=payload();change(p);assert.deepEqual(selectCandidates(p,media,fileName),[]);}
-  for(const url of ['http://dl.subdl.com/subtitle/test','https://dl.subdl.com.evil.example/subtitle/test','https://user@dl.subdl.com/subtitle/test','https://dl.subdl.com:444/subtitle/test','/subtitle/test?api_key=leak','/subtitle/../secret','https://127.0.0.1/subtitle/test'])assert.throws(()=>subtitleDownloadUrl(url));
+  for(const url of ['http://dl.subdl.com/subtitle/test','https://dl.subdl.com.evil.example/subtitle/test','https://user@dl.subdl.com/subtitle/test','https://dl.subdl.com:444/subtitle/test','/subtitle/test?api_key=leak&redirect=evil','/subtitle/../secret','https://127.0.0.1/subtitle/test'])assert.throws(()=>subtitleDownloadUrl(url));
+});
+test('live-provider credential-bearing raw URLs are stripped before selection and download',async()=>{
+  const p=payload();p.subtitles[0].url='/subtitle/test/file?api_key=private-test-key';
+  const provider=new SubdlProvider('private-test-key',async(input,options)=>{
+    if(String(input).includes('/search?'))return new Response(JSON.stringify(p));
+    assert.equal(String(input),'https://dl.subdl.com/subtitle/test/file');
+    assert.equal((options?.headers as any).Authorization,undefined);
+    return new Response(srt);
+  });
+  const [candidate]=await provider.search(media,fileName);
+  assert.doesNotMatch(JSON.stringify(candidate),/api_key|private-test-key/);
+  assert.equal(await provider.download(candidate),srt);
 });
 test('season packs require the exact individual episode while using the pack release match',()=>{
   const p:any=payload();p.subtitles=[{release_name:'Example.S02.2160p.MAX.WEB-DL.x265-GROUP',full_season:true,language:'EN',season:2,unpack_files:[{name:'Example.S02E05.srt',season:2,episode:5,language:'EN',url:'/subtitle/pack/episode5'},{name:'Example.S02E07.srt',season:2,episode:7,language:'EN',url:'/subtitle/pack/episode7'}]}];

@@ -46,6 +46,9 @@ export function rankRelease(file:string,release:string) {
 }
 export function subtitleDownloadUrl(input:string) {
   const url=new URL(input,'https://dl.subdl.com');
+  // Search responses append the account key even to public raw-file URLs.
+  // Discard it before validation, storage or download; never forward it to the CDN.
+  url.searchParams.delete('api_key');
   if(url.protocol!=='https:'||url.hostname!=='dl.subdl.com'||url.port||url.username||url.password||url.search||url.hash||!/^\/subtitle\/[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)?$/.test(url.pathname))throw new SubtitleProviderError('invalid');
   return url.href;
 }
