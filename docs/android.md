@@ -55,3 +55,11 @@ TV playback occupies the full screen and preserves the source aspect ratio. One 
 Press a direction or OK to reveal controls. Play/Pause and remote media keys control playback. Focus the timeline with Up from the transport controls; Left/Right preview a seek in ten-second steps, a held direction uses larger steps, and OK applies the selected time. Back cancels a pending seek, then hides the overlay, then returns to the title. Seeking stays within the current stream's available range, including the offset of prepared compatibility streams. Leaving the app pauses TV playback; phone background playback and landscape fullscreen remain available.
 
 Home offers a continue-watching shelf and the actual collection. Search opens on demand. The compact navigation rail leaves room for artwork, and title/series screens place the primary playback action beside the artwork. Returning from an episode retains its season and restores focus to that episode. Original playback remains the default; conversion still requires explicit permission.
+
+## TV navigation (0.4.1)
+
+Opening a film or episode requests focus on Resume or Watch now. Opening a series requests focus on Resume/Continue, or Start from beginning when no next episode remains. Returning to the series restores the episode and its season, including when playback started from the series' Continue action.
+
+Selecting a library section moves focus to its first title after loading; Home prioritizes Continue watching. Back selects the previous available title, with a fallback when it was removed. A title appearing in both the shelf and grid has one initial focus target. Search keeps keyboard focus while results load. The navigation rail remains reachable with Left and remembers the selected section.
+
+Focus requests target native touchables after mounting, including Paper's inner button. Updates to progress or favorites do not repeatedly request focus. The phone retains touch navigation. Build 0.4.1 uses Android version code 6; installing it on a playing TV must wait until the viewer is ready.

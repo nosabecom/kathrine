@@ -1,6 +1,16 @@
 # Validation
 
-## Current result
+## Android 0.4.1 TV focus candidate (2026-11-13)
+
+The owner's recording from Godseye's Downloads shows Home still highlighted after opening Tern Haven. The Android changes request initial native focus on the actual Resume/Watch now button, prioritize the series' Resume/Continue action, and restore the episode/season after returning. Section selection requests a catalog card after loading; Home prioritizes Continue watching. A shared title in the shelf and grid has one target, removed titles fall back to an available card, and search results do not take focus from the keyboard.
+
+Local `pnpm check`, all 69 tests, and `pnpm build` passed. Four new focus-policy tests cover empty/loaded catalogs, duplicate shelf/grid titles, film/series/shelf restoration, and missing-title fallback.
+
+Both initial focus APKs passed `pnpm android:build` on Godseye and full TV lint passed with no errors. Those builds predate the final season-return correction. The combined subtitle/appearance candidate must receive a fresh native build before release. The interrupted final rebuild left no running Gradle daemons or Java processes on Godseye.
+
+Emulator focus verification is pending: this session's device list exposes only the local host, which has no Android SDK. Physical-TV verification and installation are also pending because the owner is watching. No TV input, app installation, server deployment, production history write, or subtitle change was performed for this candidate. The separately coordinated subtitle repair/audit remains outside this change.
+
+## Metadata release verification (historical)
 
 Android phone and TV 0.3.1/code4 are now the published versions. Phone fullscreen requests landscape and restores the app orientation on exit; both clients keep series artwork clear of the heading. Phone behavior was verified on a Godseye Android 36 emulator. The physical Hisense was updated in place and verified separately. See the 0.3.1 results below; earlier 0.3 and playback results remain historical evidence.
 
