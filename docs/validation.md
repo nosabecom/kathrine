@@ -1,6 +1,16 @@
 # Validation
 
-## Android 0.4.1 TV focus candidate (2026-11-13)
+## Subtitle release 0.4.1 (2026-11-13)
+
+Nosa explicitly released the maintenance hold. The combined focus, subtitle appearance and native subtitle-source implementation at `04b050333a27731e6a7d0de9eb4564befd41ca47` was deployed to Ewaste. Both APKs passed complete published HTTPS hash checks. The physical Hisense updated in place to `dev.kathrine.app.tv` 0.4.1/code 6, retaining UID 10118; its installed base SHA-256 is `973f4a9b997ed3fc7e3bdcef80b55a969e56fb20bb51074ec1463aee372525cb`. Phone SHA-256 is `4f36d9f3e502d88bd882f284313e8777dfff38a45681d23bf1eff38567c8436c`; it is published but was not installed on a physical phone. Both certificates match the canonical installed certificate.
+
+The combined native builds and full TV lint passed, with actual `:expo-video:compileReleaseKotlin` execution and both patched classes present in each APK. Local checks, 82 tests and build passed before the initial deployment, with 62 isolated Ewaste tests. A live SubDL response exposed a URL-shape mismatch; the follow-up server-only patch strips provider-added API-key parameters before selection, storage and credential-free download. Its local check, 83 tests, build and 63 isolated Ewaste tests passed. Replacement-key setup and automatic sourcing remain pending; the old key was removed after a raw diagnostic exposed it.
+
+Authenticated production audit found 127 media files, one without English captions and 39 needing browser-readable text before downloaded coverage. S02E05 exposes the independently corrected Tern Haven track and labels its retained wrong-episode tracks. A complete HTTPS download of each APK matched its prepared hash, the production service health passed, and the existing `/qb/` route still returned qBittorrent. No media conversion or source rewrite was part of deployment.
+
+Only package installation and package/hash inspection used ADB. Device tools did not expose the TV for UI verification, so no launch, input, screenshot, playback or power action was performed. The dedicated ADB 5051 server stopped after installation; a later host-only check found zero port 5051 listeners and zero Java processes. Physical focus, subtitle appearance, HDR/Atmos output and playback on this release remain user/device checks. [Subtitle release details](subtitles.md) records build evidence limits and setup.
+
+## Android 0.4.1 TV focus preparation (historical, 2026-11-13)
 
 The owner's recording from Godseye's Downloads shows Home still highlighted after opening Tern Haven. The Android changes request initial native focus on the actual Resume/Watch now button, prioritize the series' Resume/Continue action, and restore the episode/season after returning. Section selection requests a catalog card after loading; Home prioritizes Continue watching. A shared title in the shelf and grid has one target, removed titles fall back to an available card, and search results do not take focus from the keyboard.
 
